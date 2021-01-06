@@ -1,26 +1,8 @@
-# snippet-comment:[These are tags for the AWS doc team's sample catalog. Do not remove.]
-# snippet-sourcedescription:[aws_service.py demonstrates how to create an API Gateway REST interface to an AWS service.]
-# snippet-service:[apigateway]
-# snippet-keyword:[API Gateway]
-# snippet-keyword:[Python]
-# snippet-keyword:[Code Sample]
-# snippet-sourcetype:[snippet]
-# snippet-sourcedate:[2019-08-14]
-# snippet-sourceauthor:[AWS]
+"""Create an AWS API Gateway REST interface to an AWS Service
 
-# Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-# http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
-
+The advantage of this technique is that the calling program does not need to have
+an AWS account/credentials or use an AWS SDK to access the service.
+"""
 
 import argparse
 import json
@@ -241,18 +223,15 @@ def create_rest_api_for_aws_service(api_name, region):
         return None
 
     # Construct the URI for the Amazon Translate.TranslateText service
-    # Note: A bug exists in the processing of the Translate URI. Specifically,
-    # passing the correct service value of 'translate' to put_integration()
-    # does not link the integration to the Translate service. Instead, to link
-    # the integration, the service must be specified as 'Translate' (uppercase
-    # 'T'). However, having 'Translate' in the URI causes the subsequent call
-    # to create_deployment() to fail with an unrecognized service. The
-    # workaround is to use the 'translate' service in the URI for both
-    # put_integration() and create_deployment(). Then to link the integration
-    # to the service, call update_integration() to replace the URI to use
-    # 'Translate'. After this bug is fixed, the translate_uri_updated variable
-    # defined below can be removed, along with the call to update_integration()
-    # later in this function.
+    # Note: Passing the correct service value of 'translate' to put_integration()
+    # links the integration to the Translate service, as expected. In the past,
+    # the link was not created and a workaround that called update_integration()
+    # was necessary to create the link. Currently, even though the link to
+    # Translate exists, if you look at the resource in the AWS Console (API >
+    # Resources > GET > Integration Request), the AWS Service field is blank.
+    # However, calls to the API still work. To show the Translate service
+    # in the Console, you can perform the update_integration() workaround,
+    # although its effect at this point is not required for the API to work.
     translate_uri = f'arn:aws:apigateway:{region}:translate:action/TranslateText'
     translate_uri_updated = f'arn:aws:apigateway:{region}:Translate:action/TranslateText'
 
@@ -356,6 +335,9 @@ def create_rest_api_for_aws_service(api_name, region):
         return None
 
     # Workaround for the 'translate/Translate' bug
+    # Currently, this workaround is optional and only affects whether the AWS
+    # Service field in the API's Console is blank or set to "Translate." In
+    # either case, calls to the API work.
     patch_uri = [{
         'path': '/uri',
         'value': translate_uri_updated,
@@ -368,9 +350,8 @@ def create_rest_api_for_aws_service(api_name, region):
                                       patchOperations=patch_uri)
     except ClientError as e:
         logging.error(e)
-        # Note: When the bug is fixed, this operation will be unnecessary and
-        # will probably fail. Thus, in the case of failure, rather than
-        # returning None here, we instead continue program execution.
+        # Note: Calls to the API will work without this optional workaround,
+        # so if the update is rejected, continue program execution anyway.
 
     # Construct the API URL
     api_url = f'https://{api_id}.execute-api.{region}.amazonaws.com/{API_STAGE}/{API_RESOURCE_NAME}'
